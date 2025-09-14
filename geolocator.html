@@ -1,43 +1,270 @@
-<?php
-namespace Obfuscator;
+<!DOCTYPE html>
+<html>
 
-/**
- * Class Obfuscator
- * @author Duru Chidozie
- * @copyright 2019
- * @version   1.0.0
- * 
- */
+<head>
+    <style>
+        #map {
+            height: 600px;
+            width: 100%;
+        }
+    </style>
+  
+</head>
 
-class Obfuscator {
+<body>
+    <h3>Select Your Destination</h3>
+    <form style="margin-bottom:20px;margin-right:auto;margin-left:auto;">
+        <input id="geocomplete" type="text" placeholder="Type in an address" style="height:30px;" size="90" />
+        <select id="travelmode" style="height:35px;">
+            <option value="DRIVING">Driving</option>
+            <option value="WALKING">Walking</option>
+            <option value="BICYCLING">Bicycling</option>
+            <option value="TRANSIT">Transit</option>
+        </select>
+        <input id="find" type="button" value="find" />
+    </form>
 
-    public static $inputPath;
-    public static $outputPath;
+    <div id="msg"></div>
+    <div id="map"></div>
 
-    public function __construct($inputPath,$outputPath){
-        self::$inputPath=$inputPath;
-        self::$outputPath=$outputPath;
-    }
+  
+    <script src="https://maps.googleapis.com/maps/api/js?libraries=places&key=xxxxxxxxxxxxxxxxxxxx">
+    </script>
+    <script>
+        useLoad();
+        // Initialize and add the map
+        var map, mk1, mk2, mk3;
+        const options = {
+            zoom: 12,
+            scaleControl: true,
+            mapTypeId: "hybrid"
+        };
+        map = new google.maps.Map(document.getElementById('map'), options);
+        var directionsService = new google.maps.DirectionsService();
+        var directionsRenderer = new google.maps.DirectionsRenderer();
+        var lines = [];
 
-    public static function obfuscate(){
-        if (!self::$inputPath || !self::$outputPath) {
-            die("Error: Not Found - input file or output file\n");
+        function animateMapZoomTo(map, targetZoom) {
+            var currentZoom = arguments[2] || map.getZoom();
+            if (currentZoom != targetZoom) {
+                google.maps.event.addListenerOnce(map, 'zoom_changed', function(event) {
+                    animateMapZoomTo(map, targetZoom, currentZoom + (targetZoom > currentZoom ? 1 : -1));
+                });
+                setTimeout(function() {
+                    map.setZoom(currentZoom)
+                }, 80);
+            }
         }
 
-        $data="ob_end_clean();?>";
+        function getLocation() {
+            return new Promise((resolve, reject) => {
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(function(position) {
+                        resolve(position.coords);
+                        let {
+                            latitude,
+                            longitude
+                        } = position.coords;
+                    }, function(error) {
+                        reject(error.message);
+                    }, {
+                        maximumAge: 60000,
+                        timeout: 1000,
+                        enableHighAccuracy: true
+                    });
+                } else {
+                    reject("Geolocation not supported");
+                }
+            });
+        }
 
-        $data.=php_strip_whitespace(self::$inputPath);
-        
-        // compress data
-        $data=gzcompress($data,9);
-        
-        // encode in base64
-        $data=base64_encode($data);
-        
-      
-        $out='<?php ob_start();$akugkjugkjgkujfkhdjdutduydihfoufkudysiyikufolufkudikydiufoujfoudkyxujtsyrsrfsytgdihogipigogoakugkjugkjgkujfkhdjdutduydihfoufkudysiyikufolufkudikydiufoujfoudkyxujtsyrsrfsytgdihogipigogoakugkjugkjgkujfkhdjdutduydihfoufkudysiyikufolufkudikydiufoujfoudkyxujtsyrsrfsytgdihogipigogo=\''.$data.'\';eval(gzuncompress(base64_decode($akugkjugkjgkujfkhdjdutduydihfoufkudysiyikufolufkudikydiufoujfoudkyxujtsyrsrfsytgdihogipigogoakugkjugkjgkujfkhdjdutduydihfoufkudysiyikufolufkudikydiufoujfoudkyxujtsyrsrfsytgdihogipigogoakugkjugkjgkujfkhdjdutduydihfoufkudysiyikufolufkudikydiufoujfoudkyxujtsyrsrfsytgdihogipigogo)));$v=ob_get_contents();ob_end_clean(); echo $v;?>';
-        // write output text
-        file_put_contents(self::$outputPath,$out);
+        async function useLoad() {
+            try {
+                var result = await getLocation();
+            mk3 = new google.maps.Marker({
+                position:  {
+                lat: result.latitude,
+                lng: result.longitude
+            },
+                icon: {
+                    url: "http://maps.google.com/mapfiles/ms/icons/blue-dot.png"
+                },
+                map,
+            });
+            } catch (e) {
+                console.log(e)
+            }
+            initMap(result);
 
-    }
-}
+        }
+
+
+        function initMap(res, destination, travelMode) {
+            if (!destination) {
+                var destination = {
+                    latitude: 8.9810661,
+                    longitude: 7.4604852
+                };
+                travelMode = "DRIVING";
+            }
+            let {
+                latitude,
+                longitude
+            } = res;
+            let latitude2 = destination.latitude;
+            let longitude2 = destination.longitude;
+            let center = {
+                lat: latitude,
+                lng: longitude
+            };
+            map.setCenter(center);
+            const myLocation = {
+                lat: latitude,
+                lng: longitude
+            };
+            const destination_ = {
+                lat: latitude2,
+                lng: longitude2
+            };
+            mk1 = new google.maps.Marker({
+                position: myLocation,
+                map,
+                title: "Current Location"
+            });
+            mk2 = new google.maps.Marker({
+                position: destination_,
+                map
+            });
+            mk1.setMap(null);
+            mk2.setMap(null);
+            mk3.setPosition(new google.maps.LatLng(latitude,longitude));
+            let line = new google.maps.Polyline({
+                path: [myLocation, destination_],
+                map
+            });
+            for (i = 0; i < lines.length; i++) {
+                lines[i].setMap(null);
+            }
+            lines.push(line);
+            directionsRenderer.setMap(map);
+            const route = {
+                origin: myLocation,
+                destination: destination_,
+                travelMode
+            }
+
+            directionsService.route(route,
+                function(response, status) {
+                    if (status !== 'OK') {
+                        window.alert('Directions request failed due to ' + status);
+                        return;
+                    } else {
+                        directionsRenderer.setDirections(response);
+                        let directionsData = response.routes[0].legs[0];
+                        console.log(response);
+                        if (!directionsData) {
+                            window.alert('Directions request failed');
+                            return;
+                        } else {
+                            document.getElementById('msg').innerHTML += travelMode + " distance is " + directionsData.distance.text + " (" + directionsData.duration.text + ").";
+                        }
+                    }
+                });
+
+
+
+            function haversine_distance(mk1, mk2) {
+                let R = 6371.0710; // to use kilometres 
+                //var R = 3958.8; // Radius of the Earth in miles
+                let rlat1 = mk1.position.lat() * (Math.PI / 180); // Convert degrees to radians
+                let rlat2 = mk2.position.lat() * (Math.PI / 180); // Convert degrees to radians
+                let difflat = rlat2 - rlat1; // Radian difference (latitudes)
+                let difflon = (mk2.position.lng() - mk1.position.lng()) * (Math.PI / 180); // Radian difference (longitudes)
+                let d = 2 * R * Math.asin(Math.sqrt(Math.sin(difflat / 2) * Math.sin(difflat / 2) + Math.cos(rlat1) * Math.cos(rlat2) * Math.sin(difflon / 2) * Math.sin(difflon / 2)));
+                return d;
+            }
+            // Calculate and display the distance between markers
+            let distance = haversine_distance(mk1, mk2);
+            document.getElementById('msg').innerHTML = "Distance between markers: " + distance.toFixed(2) + " kilometres.";
+            animateMapZoomTo(map, 14);
+        }
+    </script>
+
+    <script src="jqmain.js"></script>
+    <script src="jquery.geocomplete.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.24.0/axios.min.js" integrity="sha512-u9akINsQsAkG9xjc1cnGF4zw5TFDwkxuc9vUp5dltDWYCSmyd0meygbvgXrlc/z7/o4a19Fb5V0OUE58J7dcyw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script>
+        $(function() {
+            $("#geocomplete").geocomplete();
+            $("#find").click(function() {
+                let travelMode = $("#travelmode").val();
+                let furi = "https://maps.googleapis.com/maps/api/geocode/json?key=xxxxxxxxxxxxxxxxxxxx"+"&address=" + encodeURI($("#geocomplete").val());
+                axios(furi)
+                    .then(async function(data) {
+                        try {
+                            var result2 = await getLocation();
+                        } catch (e) {
+                            console.log(e);
+                        }
+                        if (data && data.data.status == "OK") {
+                            let {
+                                lat,
+                                lng
+                            } = data.data.results[0].geometry.location;
+                            let res = {
+                                latitude: lat,
+                                longitude: lng
+                            };
+                            initMap(result2, res, travelMode);
+                        }
+                    })
+                    .catch(function(error) {
+                        console.log("error", error);
+                    });
+            });
+            $("#geocomplete").trigger("geocode");
+            google.maps.event.addListener(map, 'click', function(me) {
+                var result = [me.latLng.lat(), me.latLng.lng()];
+                transition(result);
+            });
+            var position = [8.9810661, 7.4604852];
+            var numDeltas = 100;
+            var delay = 10; //milliseconds
+            var i = 0;
+            var deltaLat;
+            var deltaLng;
+
+            function transition(result) {
+                i = 0;
+                deltaLat = (result[0] - position[0]) / numDeltas;
+                deltaLng = (result[1] - position[1]) / numDeltas;
+                moveMarker();
+            }
+
+            function moveMarker() {
+                position[0] += deltaLat;
+                position[1] += deltaLng;
+                var latlng = new google.maps.LatLng(position[0], position[1]);
+
+                mk3.setPosition(latlng);
+
+                if (i != numDeltas) {
+                    i++;
+                    setTimeout(moveMarker, delay);
+                }
+            }
+
+        });
+
+        setInterval(async function() {
+            try {
+                let result3 = await getLocation();
+                mk3.setPosition(new google.maps.LatLng(result3.latitude,result3.longitude));
+            } catch (e) {
+                console.log(e);
+            }
+        }, 1000);
+    </script>
+</body>
+
+</html>
